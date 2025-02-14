@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valentine's Surprise</title>
+    <style>
+        body {
+            background-color: #ffd1dc;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .curtain {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: pink;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            color: white;
+            transition: transform 2s ease-in-out;
+        }
+
+        .hidden {
+            transform: translateY(-100%);
+        }
+
+        .floating-hearts {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .heart {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: red;
+            clip-path: polygon(50% 0%, 100% 30%, 80% 100%, 50% 75%, 20% 100%, 0% 30%);
+            opacity: 0.7;
+            animation: float 5s infinite linear;
+        }
+
+        #photo-gallery {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        #photo {
+            max-width: 80%;
+            max-height: 60vh;
+            border-radius: 10px;
+            object-fit: contain;
+        }
+
+        #message {
+            font-size: 1.5em;
+            margin-top: 20px;
+            max-width: 80%;
+        }
+
+        #play-button {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) scale(0.5);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-10vh) scale(1);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="curtain" id="curtain">Happy Valentine's Day ❤️</div>
+    <div class="floating-hearts" id="floating-hearts"></div>
+
+    <div id="photo-gallery" style="display: none; text-align: center;">
+        <img id="photo" src="thankyou.webp"
+            style="width: 90vw; max-height: 80vh; border-radius: 10px; object-fit: contain;">
+        <p id="message" style="max-width: 80%; font-size: 1.2em; margin-top: 10px;">First of all, I wanted to say thank
+            you for being with me the last 2 years ❤️</p>
+    </div>
+
+    <div id="love-letter-container" style="display: none; text-align: center; padding: 20px;">
+        <button id="reveal-letter" style="padding: 10px 20px; font-size: 1.2em; border-radius: 10px;">💌 Reveal Love
+            Letter</button>
+        <p id="love-letter"
+            style="display: none; font-family: 'Dancing Script', cursive; font-size: 1.5em; opacity: 0; transition: opacity 2s;">
+            My love,
+            Every moment with you is a beautiful memory,
+            Every laugh is my favorite sound,
+            And every day with you is my best day.
+            I love you more than words can say. 💖
+        </p>
+        <button id="play-button" style="display: none;">Play</button>
+
+    </div>
+
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            setTimeout(() => {
+                document.getElementById("curtain").classList.add("hidden");
+                setTimeout(() => {
+                    document.getElementById("photo-gallery").style.display = "flex";
+                }, 1000);
+            }, 2000);
+
+            function createHeart() {
+                const heart = document.createElement("div");
+                heart.className = "heart";
+                heart.style.left = Math.random() * 100 + "vw";
+                heart.style.animationDuration = (Math.random() * 2 + 3) + "s";
+                document.getElementById("floating-hearts").appendChild(heart);
+                setTimeout(() => heart.remove(), 5000);
+            }
+            setInterval(createHeart, 300);
+
+            const photos = [
+                { src: "bestfriend.jpg", message: "I just wanted to tell you that you're my best friend and favorite human <3" },
+                { src: "romarebpizza.jpg", message: "My food partner in crime " },
+                { src: "prettygirl.jpg", message: "The most beautiful girl in the world " },
+                { src: "restaurantturin.jpg", message: "Every date with you is special " },
+                { src: "bestfriend2.jpg", message: "I'm always happy when I'm with you <3 (and that ass)" },
+                { src: "romarebtoilet.jpg", message: "The fart power couple " },
+                { src: "turin1.jpg", message: "Turin was amazing, but being with you made it magical " },
+                { src: "turin2.PNG", message: "Waking up is better with you by my side " },
+                { src: "youremybestfriend.PNG", message: "You're not just my love, you're my safe space, my confidant" },
+            ];
+
+            let index = 0;
+            const photo = document.getElementById("photo");
+            const message = document.getElementById("message");
+
+            document.getElementById("photo-gallery").addEventListener("click", function () {
+                index = (index + 1) % photos.length;
+                photo.src = photos[index].src;
+                message.textContent = photos[index].message;
+                if (index === photos.length - 1) {
+                    setTimeout(() => {
+                        document.getElementById("love-letter-container").style.display = "block";
+                    }, 1000);
+                }
+            });
+
+            // Reveal the love letter
+            document.getElementById("reveal-letter").addEventListener("click", function () {
+                const letter = document.getElementById("love-letter");
+                letter.style.display = "block";
+                setTimeout(() => letter.style.opacity = 1, 100);
+            });
+
+            // Show "Play" button when the letter is clicked
+            const playButton = document.getElementById("play-button");
+            const loveLetter = document.getElementById("love-letter");
+
+            loveLetter.addEventListener("click", function () {
+                playButton.style.display = "block";
+                setTimeout(() => playButton.style.opacity = 1, 300); // Smooth fade-in effect
+            });
+
+            // Redirect to game.html when button is clicked
+            playButton.addEventListener("click", function () {
+                window.location.href = "game.html";
+            });
+        });
+
+    </script>
+</body>
+
+
+</html>

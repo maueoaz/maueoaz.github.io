@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valentine's Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #ffdde1;
+        }
+
+        canvas {
+            display: block;
+            background: #f8c8dc;
+        }
+
+        #gameOver {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            color: red;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+
+        const bgMusic = new Audio('music.mp3');
+        bgMusic.loop = true;
+        bgMusic.volume = 0.5; // Adjust volume
+        bgMusic.play().catch(err => console.log("Autoplay blocked. Start music on user interaction."));
+
+
+        window.addEventListener('keydown', (e) => {
+            bgMusic.play();
+            bgMusicPlayed = true;
+
+            keys[e.key.replace('Arrow', '').toLowerCase()] = true;
+        });
+
+        const jumpSound = new Audio('jump.mp3');
+
+        function playJumpSound() {
+            jumpSound.currentTime = 0; // Reset to start if played in quick succession
+            jumpSound.play();
+            jumpSound.playbackRate = 1.75;
+            jumpSound.volume = 0.2;
+        }
+
+
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const gravity = 0.8;
+        let isGameOver = false;
+        let currentLevel = 0;
+
+        const chest = {
+            x: 1500,
+            y: canvas.height - 600,
+            width: 50,
+            height: 50,
+            img: new Image()
+        };
+        chest.img.src = 'https://pngimg.com/uploads/treasure_chest/small/treasure_chest_PNG108.png';
+
+
+        const cat = {
+            x: 50,
+            y: 0,
+            width: 50,
+            height: 50,
+            speed: 5,
+            dx: 0,
+            dy: 0,
+            jumping: false,
+            img: new Image()
+        };
+        cat.img.src = 'https://imgs.search.brave.com/-wEH5j7uGdpvYTOQr-LX_z9FH0DQoJvLNkF08j-2dso/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWFn/ZXMudmV4ZWxzLmNv/bS9tZWRpYS91c2Vy/cy8zLzMwODA5Ni9p/c29sYXRlZC9wcmV2/aWV3L2QwNTA4ZDkz/MmJjZjcxMDNjZjAx/N2Q4ZThjNmU5N2Y0/LXBpeGVsLWFydC1h/bmdyeS1jYXQucG5n';
+
+        const keys = { right: false, left: false, up: false };
+        let platforms = [];
+        const heartCount = 5; // Number of hearts per level
+        let hearts = [];
+        const levels = [
+            // Level 1: Simple platforms
+            [
+                { x: 0, y: 500, width: 600, height: 20 },
+                { x: 650, y: 400, width: 200, height: 20 },
+                { x: 900, y: 300, width: 250, height: 20 },
+                { x: 1200, y: 200, width: 200, height: 20 }
+            ],
+            // Level 2: Wider gaps, harder jumps
+            [
+                { x: 0, y: 500, width: 400, height: 20 },
+                { x: 500, y: 450, width: 150, height: 20 },
+                { x: 700, y: 350, width: 250, height: 20 },
+                { x: 1050, y: 250, width: 150, height: 20 }
+            ],
+            // Level 3: Floating platforms and staggered heights
+            [
+                { x: 0, y: 550, width: 300, height: 20 },
+                { x: 400, y: 450, width: 200, height: 20 },
+                { x: 750, y: 400, width: 150, height: 20 },
+                { x: 950, y: 300, width: 100, height: 20 },
+                { x: 1150, y: 200, width: 250, height: 20 }
+            ],
+            // Level 4: More scattered platforms with tricky jumps
+            [
+                { x: 0, y: 600, width: 200, height: 20 },
+                { x: 250, y: 500, width: 150, height: 20 },
+                { x: 500, y: 400, width: 100, height: 20 },
+                { x: 700, y: 300, width: 150, height: 20 },
+                { x: 950, y: 250, width: 100, height: 20 },
+                { x: 1200, y: 200, width: 200, height: 20 }
+            ],
+            // Level 5: Longest jumps, smallest platforms
+            [
+                { x: 0, y: 550, width: 250, height: 20 },
+                { x: 400, y: 500, width: 150, height: 20 },
+                { x: 650, y: 450, width: 100, height: 20 },
+                { x: 850, y: 400, width: 100, height: 20 },
+                { x: 1100, y: 350, width: 100, height: 20 },
+                { x: 1350, y: 250, width: 100, height: 20 },
+                { x: 1600, y: 200, width: 100, height: 20 }
+            ],
+            [
+                { x: 300, y: 600, width: 200, height: 20 }, // Bottom platform
+                { x: 350, y: 500, width: 150, height: 20 },
+                { x: 400, y: 400, width: 150, height: 20 },
+                { x: 300, y: 300, width: 120, height: 20 },
+                { x: 350, y: 200, width: 100, height: 20 },
+                { x: 400, y: 120, width: 100, height: 20 } // Top platform
+            ],
+            // Level 5: Fast-moving platforms
+            [
+                { x: 100, y: 550, width: 300, height: 20 },
+                { x: 500, y: 450, width: 200, height: 20, moving: true, direction: "horizontal", speed: 4, range: 300 },
+                { x: 850, y: 350, width: 200, height: 20, moving: true, direction: "horizontal", speed: 3, range: 250 },
+                { x: 1200, y: 250, width: 200, height: 20 }
+            ],
+
+            // Level 6: First disappearing platform
+            [
+                { x: 0, y: 550, width: 300, height: 20 },
+                { x: 400, y: 500, width: 200, height: 20, disappearing: true, timer: 3 },
+                { x: 700, y: 450, width: 250, height: 20 },
+                { x: 1100, y: 350, width: 200, height: 20 }
+            ],
+
+            // Level 7: Spike challenge (dangerous paths)
+            [
+                { x: 0, y: 550, width: 400, height: 20 },
+                { x: 500, y: 500, width: 200, height: 20 },
+                { x: 800, y: 450, width: 200, height: 20 },
+                { x: 1100, y: 350, width: 200, height: 20 }
+            ],
+
+            // Level 8: Moving vertical platforms
+            [
+                { x: 100, y: 600, width: 300, height: 20 },
+                { x: 500, y: 500, width: 150, height: 20, moving: true, direction: "vertical", speed: 3, range: 150 },
+                { x: 800, y: 400, width: 200, height: 20 },
+                { x: 1100, y: 300, width: 200, height: 20 }
+            ],
+
+            // Level 9: Tower of Doom (Hardest climbing)
+            [
+                { x: 200, y: 650, width: 200, height: 20 },
+                { x: 400, y: 550, width: 150, height: 20 },
+                { x: 600, y: 450, width: 150, height: 20 },
+                { x: 800, y: 350, width: 150, height: 20 },
+                { x: 1000, y: 250, width: 150, height: 20, moving: true, direction: "horizontal", speed: 3, range: 200 }
+            ],
+
+            // Level 10: The Ultimate Challenge
+            [
+                { x: 50, y: 600, width: 200, height: 20 },
+                { x: 300, y: 500, width: 150, height: 20, disappearing: true, timer: 3 },
+                { x: 500, y: 450, width: 100, height: 20 },
+                { x: 700, y: 400, width: 100, height: 20, moving: true, direction: "horizontal", speed: 4, range: 250 },
+                { x: 900, y: 350, width: 100, height: 20 },
+                { x: 1100, y: 300, width: 100, height: 20, moving: true, direction: "vertical", speed: 3, range: 200 }
+            ]
+        ];
+
+
+
+        function loadLevel(level) {
+            platforms = levels[level];
+
+            let firstPlatform = platforms[0];
+            cat.x = firstPlatform.x + 10;
+            cat.y = firstPlatform.y - cat.height;
+            cat.dy = 0;
+            cat.jumping = false;
+
+            let lastPlatform = platforms[platforms.length - 1];
+            chest.x = lastPlatform.x + lastPlatform.width / 2 - chest.width / 2;
+            chest.y = lastPlatform.y - chest.height;
+
+            hearts = [];
+            for (let i = 0; i < heartCount; i++) {
+                let platform = platforms[Math.floor(Math.random() * platforms.length)];
+                let heart = {
+                    x: platform.x + Math.random() * (platform.width - 30),
+                    y: platform.y - 40,
+                    width: 30,
+                    height: 30,
+                    img: new Image(),
+                };
+                heart.img.src = "heart.png";
+                hearts.push(heart);
+            }
+
+            platforms.forEach(platform => {
+                if (platform.moving) {
+                    platform.startX = platform.x; // Store original X position
+                    platform.startY = platform.y; // Store original Y position
+                }
+            });
+
+        }
+
+
+
+
+        function updateCat() {
+            if (keys.right) cat.dx = cat.speed;
+            else if (keys.left) cat.dx = -cat.speed;
+            else cat.dx = 0;
+
+            if (keys.up && !cat.jumping) {
+                cat.dy = -15;
+                cat.jumping = true;
+                playJumpSound();
+            }
+
+            cat.dy += gravity;
+            cat.x += cat.dx;
+            cat.y += cat.dy;
+
+            if (cat.x < 0) cat.x = 0;
+            if (cat.x + cat.width > canvas.width) cat.x = canvas.width - cat.width;
+
+            let onPlatform = false;
+            for (let platform of platforms) {
+
+                if (
+                    cat.y + cat.height >= platform.y && // Cat is below the platform top
+                    cat.y + cat.height - cat.dy <= platform.y + 10 && // Cat was above last frame
+                    cat.x + cat.width > platform.x &&
+                    cat.x < platform.x + platform.width &&
+                    cat.dy >= 0
+                ) {
+                    cat.jumping = false;
+                    cat.dy = 0;
+                    cat.y = platform.y - cat.height; // Ensure it lands exactly on top
+                    onPlatform = true;
+                }
+
+
+            }
+
+
+            // // Prevent falling through floor
+            // if (!onPlatform && cat.y + cat.height >= canvas.height - 50) {
+            //     cat.jumping = false;
+            //     cat.dy = 0;
+            //     cat.y = canvas.height - 50 - cat.height;
+            // }
+
+            if (cat.y > canvas.height + 50) { // Death zone below screen
+                respawnCat();
+            }
+
+            // Collect hearts
+            hearts = hearts.filter(heart => !(cat.x < heart.x + heart.width && cat.x + cat.width > heart.x &&
+                cat.y < heart.y + heart.height && cat.y + cat.height > heart.y));
+
+            // Check if cat reached chest
+            if (cat.x < chest.x + chest.width && cat.x + cat.width > chest.x &&
+                cat.y < chest.y + chest.height && cat.y + cat.height > chest.y) {
+                nextLevel();
+            }
+        }
+
+        let heartsExplosion = [];
+        let winningMessage = ""; // Store the victory message
+
+        function createHeartExplosion() {
+            heartsExplosion = [];
+            for (let i = 0; i < 30; i++) {
+                heartsExplosion.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    size: Math.random() * 20 + 10,
+                    dx: (Math.random() - 0.5) * 10,
+                    dy: (Math.random() - 0.5) * 10,
+                    opacity: 1,
+                    img: new Image()
+                });
+                heartsExplosion[i].img.src = "heart.png";
+            }
+        }
+
+        function updateHeartExplosion() {
+            heartsExplosion.forEach(heart => {
+                heart.x += heart.dx;
+                heart.y += heart.dy;
+                heart.opacity -= 0.02;
+            });
+
+            heartsExplosion = heartsExplosion.filter(heart => heart.opacity > 0);
+        }
+
+        function drawHeartExplosion() {
+            heartsExplosion.forEach(heart => {
+                ctx.globalAlpha = heart.opacity;
+                ctx.drawImage(heart.img, heart.x, heart.y, heart.size, heart.size);
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        function drawWinningMessage() {
+            ctx.font = "48px Arial";
+            ctx.fillStyle = "red";
+            ctx.textAlign = "center";
+            ctx.fillText(winningMessage, canvas.width / 2, canvas.height / 2);
+        }
+
+        function nextLevel() {
+            currentLevel++;
+            if (currentLevel >= levels.length) {
+                createHeartExplosion();
+                winningMessage = "Good Job my princess! ❤️🎉";
+                isGameOver = true;
+            } else {
+                loadLevel(currentLevel);
+            }
+        }
+
+        function respawnCat() {
+            let firstPlatform = platforms[0]; // Get first platform of the level
+            cat.x = firstPlatform.x + firstPlatform.width / 2 - cat.width / 2; // Center on platform
+            cat.y = firstPlatform.y - cat.height - 5; // Place above the platform
+            cat.velocityY = 0; // Reset vertical velocity
+        }
+
+
+        function gameLoop() {
+            if (!isGameOver) {
+                updateCat();
+                updatePlatforms(); // Update moving & vanishing platforms
+                // checkSpikes(); // Check if the cat touches spikes
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.save();
+                ctx.translate(-cat.x + canvas.width / 2.5, -cat.y + canvas.height / 3);
+
+                // Draw platforms (excluding vanished ones)
+                platforms.forEach(platform => {
+                    if (!platform.vanished) {
+                        ctx.fillStyle = '#8b4513';
+                        ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    }
+                });
+
+                // Draw hearts
+                hearts.forEach(heart => {
+                    ctx.drawImage(heart.img, heart.x, heart.y, heart.width, heart.height);
+                });
+
+                // Draw chest
+                ctx.drawImage(chest.img, chest.x, chest.y, chest.width, chest.height);
+
+                // Draw cat
+                ctx.drawImage(cat.img, cat.x, cat.y, cat.width, cat.height);
+
+                ctx.restore();
+                requestAnimationFrame(gameLoop);
+            } else {
+                updateHeartExplosion();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawHeartExplosion();
+                drawWinningMessage();
+                if (heartsExplosion.length > 0) {
+                    requestAnimationFrame(gameLoop);
+                }
+            }
+        }
+
+        function updatePlatforms() {
+            platforms.forEach(platform => {
+                // Handle Moving Platforms
+                if (platform.moving) {
+                    if (platform.direction === "horizontal") {
+                        platform.x += platform.speed;
+                        if (platform.x > platform.startX + platform.range || platform.x < platform.startX) {
+                            platform.speed *= -1; // Reverse direction
+                        }
+                    } else if (platform.direction === "vertical") {
+                        platform.y += platform.speed;
+                        if (platform.y > platform.startY + platform.range || platform.y < platform.startY) {
+                            platform.speed *= -1; // Reverse direction
+                        }
+                    }
+                }
+
+                // Handle Disappearing Platforms
+                if (platform.disappearing) {
+                    platform.timer -= 0.016; // Reduce time per frame (~60 FPS)
+                    if (platform.timer <= 0) {
+                        platform.hidden = !platform.hidden; // Toggle visibility
+                        platform.timer = 3; // Reset timer
+                    }
+                }
+            });
+        }
+
+
+
+
+        function checkSpikes() {
+            for (let spike of spikes) {
+                if (cat.y + cat.height >= spike.y &&
+                    cat.x < spike.x + spike.width &&
+                    cat.x + cat.width > spike.x) {
+                    gameOver();
+                }
+            }
+        }
+
+        function gameOver() {
+            isGameOver = true;
+            document.getElementById("gameOver").style.display = "block";
+        }
+
+
+
+        window.addEventListener('keydown', e => keys[e.key.replace('Arrow', '').toLowerCase()] = true);
+        window.addEventListener('keyup', e => keys[e.key.replace('Arrow', '').toLowerCase()] = false);
+
+        loadLevel(currentLevel);
+        gameLoop();
+
+    </script>
+</body>
+
+</html>
